@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     allowedHosts: [
-      'course-selling-web.onrender.com',
+      'true-bill1.onrender.com',
       'localhost',  // You can add localhost here for local development as well.
     ],
    // port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
