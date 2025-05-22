@@ -20,6 +20,7 @@ const lazyWithDelay = (importFunc, delay = 1000) => {
 // Lazy-loaded components
 const InvoiceForm = lazyWithDelay(() => import("./components/InvoiceForm"));
 const Register = lazyWithDelay(() => import("./components/Register"));
+const MyProfile = lazyWithDelay(() => import("./components/MyProfile"));
 
 const Spinner = () => (
   <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "50vh" }}>
@@ -28,6 +29,16 @@ const Spinner = () => (
     </div>
   </div>
 );
+
+const billingData = {
+  name: "Alice Johnson",
+  address: "456 Elm Street",
+  city: "Los Angeles",
+  postalCode: "90001",
+  country: "USA",
+  email: "alice.johnson@example.com",
+  phone: "+1 234 567 890"
+};
 
 const App = () => {
   return (
@@ -56,6 +67,14 @@ const App = () => {
             element={
               <Suspense fallback={<Spinner />}>
                 <Register />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/my-profile"
+            element={
+              <Suspense fallback={<Spinner />}>
+                <MyProfile billingInfo={billingData} />
               </Suspense>
             }
           />
