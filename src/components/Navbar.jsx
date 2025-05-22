@@ -3,18 +3,20 @@ import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   return (
-    <nav className="bg-gray-500 px-6 py-4 shadow-md">
-      <div className="max-w-7xl mx-auto flex justify-between items-center">
-        {/* Left: Logo/Brand */}
-        <div className="text-2xl font-bold text-white">
-          Truebill
+    <nav className="bg-white shadow-md">
+      <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-4">
+        {/* Left: Logo/Brand (no hover effect) */}
+        <div className="text-3xl font-extrabold text-gray-800 tracking-wide">
+          <Link to="/home" className="inline-block px-2 py-1">
+            true bill
+          </Link>
         </div>
 
-        {/* Right: Login Button as Link */}
+        {/* Right: Login Button */}
         <div>
           <Link
             to="/login"
-            className="px-4 py-2 border border-white text-white rounded-md hover:bg-white hover:text-gray-500 transition"
+            className="px-4 py-2 border border-gray-800 text-gray-800 rounded-md hover:bg-gray-800 hover:text-white transition duration-300"
           >
             Login
           </Link>
