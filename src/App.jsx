@@ -21,6 +21,7 @@ const lazyWithDelay = (importFunc, delay = 1000) => {
 const InvoiceForm = lazyWithDelay(() => import("./components/InvoiceForm"));
 const Register = lazyWithDelay(() => import("./components/Register"));
 const MyProfile = lazyWithDelay(() => import("./components/MyProfile"));
+const ProductsPage= lazyWithDelay(()=> import("./components/ProdcutsPage"))
 
 const Spinner = () => (
   <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "50vh" }}>
@@ -67,6 +68,14 @@ const App = () => {
             element={
               <Suspense fallback={<Spinner />}>
                 <Register />
+              </Suspense>
+            }
+          />
+           <Route
+            path="/products"
+            element={
+              <Suspense fallback={<Spinner />}>
+                <ProductsPage />
               </Suspense>
             }
           />

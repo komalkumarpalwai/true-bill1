@@ -14,6 +14,12 @@ const Navbar = () => {
 
         {/* Right: Login and My Profile */}
         <div className="flex items-center space-x-4">
+           <Link
+            to="/products"
+            className="px-4 py-2 border border-gray-800 text-gray-800 rounded-md hover:bg-gray-800 hover:text-white transition duration-300"
+          >
+            My products
+          </Link>
           <Link
             to="/my-profile"
             className="px-4 py-2 border border-gray-800 text-gray-800 rounded-md hover:bg-gray-800 hover:text-white transition duration-300"

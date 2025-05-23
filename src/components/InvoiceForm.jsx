@@ -1,546 +1,621 @@
 import React, { useState, useEffect, useCallback } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
-import Card from "react-bootstrap/Card";
 import InvoiceModal from "./InvoiceModal";
-import InputGroup from "react-bootstrap/InputGroup";
+import { FaSearch, FaTimes, FaPlus, FaPrint } from "react-icons/fa";
+import { toast, ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
-const PRODUCTS = [
-  {
-    id: "prod1",
-    name: "Website Design",
-    description: "Full responsive website design",
-    price: 500,
-  },
-  {
-    id: "prod2",
-    name: "Logo Design",
-    description: "Custom logo creation",
-    price: 150,
-  },
-  {
-    id: "prod3",
-    name: "SEO Optimization",
-    description: "Search engine optimization service",
-    price: 300,
-  },
-  {
-    id: "prod4",
-    name: "Hosting (1 year)",
-    description: "Web hosting service for 1 year",
-    price: 100,
-  },
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "INR", symbol: "₹", name: "Indian Rupee" },
+  { code: "JPY", symbol: "¥", name: "Japanese Yen" },
 ];
 
 const InvoiceForm = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [currency, setCurrency] = useState("₹");
-  const [currentDate] = useState(new Date().toLocaleDateString());
-  const [invoiceNumber, setInvoiceNumber] = useState(1);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [dateOfIssue, setDateOfIssue] = useState("");
   const [billTo, setBillTo] = useState("");
-  const [billToEmail, setBillToEmail] = useState("");
   const [billToAddress, setBillToAddress] = useState("");
   const [billFrom, setBillFrom] = useState("");
-  const [billFromEmail, setBillFromEmail] = useState("");
   const [billFromAddress, setBillFromAddress] = useState("");
-  const [notes, setNotes] = useState(
-    "Thank you for doing business with us. Have a great day!"
-  );
   const [total, setTotal] = useState("0.00");
   const [subTotal, setSubTotal] = useState("0.00");
-  const [taxRate, setTaxRate] = useState("");
+  const [taxRate, setTaxRate] = useState("0");
   const [taxAmount, setTaxAmount] = useState("0.00");
-  const [discountRate, setDiscountRate] = useState("");
-  const [discountAmount, setDiscountAmount] = useState("0.00");
+  const [currency, setCurrency] = useState(CURRENCIES[0]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [userLogo, setUserLogo] = useState("");
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [items, setItems] = useState([]);
+  const [addManually, setAddManually] = useState(false);
+  const [manualProduct, setManualProduct] = useState({
+    name: "",
+    description: "",
+    price: "",
+    quantity: "1"
+  });
+  const [notes, setNotes] = useState("Thank you for your business!");
+  const [terms, setTerms] = useState("Payment due within 30 days");
 
-  const [items, setItems] = useState([
-    {
-      id: (+new Date() + Math.floor(Math.random() * 999999)).toString(36),
-      productId: "",
-      name: "",
-      description: "",
-      price: "1.00",
-      quantity: 1,
-    },
-  ]);
+  // Generate invoice number and set current date on component mount
+  useEffect(() => {
+    const generateInvoiceNumber = () => {
+      const timestamp = Date.now();
+      const randomNum = Math.floor(Math.random() * 1000);
+      return `INV-${timestamp}-${randomNum}`;
+    };
+
+    setInvoiceNumber(generateInvoiceNumber());
+    setDateOfIssue(new Date().toISOString().split('T')[0]);
+  }, []);
+
+  // Load profile data and products from localStorage
+  useEffect(() => {
+    const savedProfile = JSON.parse(localStorage.getItem("billingInfo"));
+    if (savedProfile) {
+      setBillFrom(savedProfile.company || "");
+      setBillFromAddress(
+        `${savedProfile.address || ""}\n${savedProfile.city || ""}, ${
+          savedProfile.postalCode || ""
+        }\n${savedProfile.country || ""}`
+      );
+      setUserLogo(localStorage.getItem("userLogo") || "");
+    }
+
+    const savedProducts = JSON.parse(localStorage.getItem("automobileProducts")) || [];
+    setProducts(savedProducts);
+    setFilteredProducts(savedProducts);
+  }, []);
+
+  // Filter products based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredProducts(products);
+    } else {
+      const filtered = products.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredProducts(filtered);
+    }
+  }, [searchTerm, products]);
 
   const handleCalculateTotal = useCallback(() => {
-    let newSubTotal = items
-      .reduce((acc, item) => {
-        return acc + parseFloat(item.price || 0) * parseInt(item.quantity || 0);
-      }, 0)
-      .toFixed(2);
-
-    let newtaxAmount = (newSubTotal * (taxRate / 100 || 0)).toFixed(2);
-    let newdiscountAmount = (newSubTotal * (discountRate / 100 || 0)).toFixed(2);
-    let newTotal = (
-      newSubTotal -
-      newdiscountAmount +
-      parseFloat(newtaxAmount)
+    const newSubTotal = items.reduce(
+      (acc, item) => acc + (parseFloat(item.price || 0) * parseInt(item.quantity || 0)),
+      0
     ).toFixed(2);
+    
+    const newTaxAmount = (newSubTotal * (parseFloat(taxRate) / 100 || 0)).toFixed(2);
+    const newTotal = (parseFloat(newSubTotal) + parseFloat(newTaxAmount)).toFixed(2);
 
     setSubTotal(newSubTotal);
-    setTaxAmount(newtaxAmount);
-    setDiscountAmount(newdiscountAmount);
+    setTaxAmount(newTaxAmount);
     setTotal(newTotal);
-  }, [items, taxRate, discountRate]);
+  }, [items, taxRate]);
 
   useEffect(() => {
     handleCalculateTotal();
   }, [handleCalculateTotal]);
 
   const handleRowDel = (item) => {
-    const updatedItems = items.filter((i) => i.id !== item.id);
-    setItems(updatedItems);
+    setItems(items.filter((i) => i.id !== item.id));
   };
 
-  const handleAddEvent = () => {
-    const id = (+new Date() + Math.floor(Math.random() * 999999)).toString(36);
-    const newItem = {
-      id,
-      productId: "",
+  const handleAddItem = () => {
+    setShowProductSearch(true);
+    setAddManually(false);
+    setSearchTerm("");
+  };
+
+  const handleAddManually = () => {
+    setShowProductSearch(false);
+    setAddManually(true);
+  };
+
+  const handleAddProductToInvoice = (product) => {
+    setItems([
+      ...items,
+      {
+        id: Date.now().toString(),
+        productId: product.id,
+        name: product.name,
+        description: product.description || "",
+        price: product.price,
+        quantity: 1,
+      },
+    ]);
+    setShowProductSearch(false);
+    setSearchTerm("");
+  };
+
+  const handleAddManualProduct = () => {
+    if (!manualProduct.name.trim()) {
+      toast.error('Product name is required');
+      return;
+    }
+
+    if (!manualProduct.price || isNaN(parseFloat(manualProduct.price))) {
+      toast.error('Valid price is required');
+      return;
+    }
+
+    setItems([
+      ...items,
+      {
+        id: Date.now().toString(),
+        name: manualProduct.name.trim(),
+        description: manualProduct.description.trim(),
+        price: parseFloat(manualProduct.price).toFixed(2),
+        quantity: parseInt(manualProduct.quantity) || 1,
+      },
+    ]);
+    setManualProduct({
       name: "",
-      price: "1.00",
       description: "",
-      quantity: 1,
+      price: "",
+      quantity: "1"
+    });
+    setAddManually(false);
+  };
+
+  const handleManualProductChange = (e) => {
+    const { name, value } = e.target;
+    setManualProduct(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleItemChange = (id, field, value) => {
+    setItems(
+      items.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const saveInvoiceToHistory = (invoiceData) => {
+    try {
+      const currentHistory = JSON.parse(localStorage.getItem("invoiceHistory") || "[]");
+      const updatedHistory = [invoiceData, ...currentHistory];
+      localStorage.setItem("invoiceHistory", JSON.stringify(updatedHistory));
+      return true;
+    } catch (error) {
+      console.error("Error saving invoice to history:", error);
+      toast.error("Failed to save invoice to history");
+      return false;
+    }
+  };
+
+  const openModal = (e) => {
+    e.preventDefault();
+    if (items.length === 0) {
+      toast.error('Please add at least one item to the invoice');
+      return;
+    }
+
+    const invoiceData = {
+      invoiceNumber,
+      dateOfIssue,
+      billFrom,
+      billFromAddress,
+      billTo,
+      billToAddress,
+      items: items.map(item => ({
+        ...item,
+        price: parseFloat(item.price).toFixed(2)
+      })),
+      total,
+      subTotal,
+      taxRate,
+      taxAmount,
+      currency: currency.symbol,
+      companyLogo: userLogo,
+      notes,
+      terms,
+      createdAt: new Date().toISOString()
     };
-    setItems([...items, newItem]);
+
+    if (saveInvoiceToHistory(invoiceData)) {
+      setIsOpen(true);
+    }
   };
 
-  const onItemizedItemEdit = (evt) => {
-    const { id, name, value } = evt.target;
+  const closeModal = () => setIsOpen(false);
 
-    const updatedItems = items.map((item) => {
-      if (item.id === id) {
-        if (name !== "productId") {
-          return { ...item, [name]: value, productId: "" };
-        }
-        return { ...item, [name]: value };
-      }
-      return item;
-    });
-    setItems(updatedItems);
-  };
-
-  const onProductSelect = (itemId, selectedProductId) => {
-    const product = PRODUCTS.find((p) => p.id === selectedProductId);
-
-    const updatedItems = items.map((item) => {
-      if (item.id === itemId) {
-        if (product) {
-          return {
-            ...item,
-            productId: product.id,
-            name: product.name,
-            description: product.description,
-            price: product.price.toFixed(2),
-            quantity: 1,
-          };
-        } else {
-          return {
-            ...item,
-            productId: "",
-            name: "",
-            description: "",
-            price: "1.00",
-            quantity: 1,
-          };
-        }
-      }
-      return item;
-    });
-
-    setItems(updatedItems);
-  };
-
-  const handleChange = (setter) => (event) => {
-    setter(event.target.value);
-  };
-
-  const openModal = (event) => {
-    event.preventDefault();
-    handleCalculateTotal();
-    setIsOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsOpen(false);
+  const handleCurrencyChange = (e) => {
+    const selectedCurrency = CURRENCIES.find((c) => c.code === e.target.value);
+    setCurrency(selectedCurrency || CURRENCIES[0]);
   };
 
   return (
-    <>
-      <style>
-        {`
-          .form-control, .form-select {
-            border: 1.5px solid #ccc !important;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-          }
-          .form-control:focus, .form-select:focus {
-            border-color: #007bff !important;
-            box-shadow: 0 0 8px rgba(0, 123, 255, 0.25);
-          }
-          label.fw-bold {
-            font-weight: 600 !important;
-            font-size: 1.05rem;
-            margin-bottom: 0.5rem;
-          }
-          .table > thead > tr > th {
-            font-weight: 600;
-            background-color: #f8f9fa;
-          }
-          button.btn-primary {
-            background-color: #007bff;
-            border: none;
-            font-weight: 600;
-            padding: 0.5rem 1.25rem;
-            transition: background-color 0.3s ease;
-          }
-          button.btn-primary:hover {
-            background-color: #0056b3;
-          }
-          button.btn-danger {
-            font-weight: 700;
-            padding: 0 0.5rem;
-          }
-          .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgb(0 0 0 / 0.08);
-          }
-          @media (max-width: 768px) {
-            .current-date {
-              display: block;
-              margin-top: 4px;
-            }
-            .d-flex.flex-row {
-              flex-direction: column !important;
-            }
-            .d-flex.flex-row > * {
-              margin-bottom: 10px;
-            }
-            .table-responsive {
-              overflow-x: auto;
-            }
-          }
-        `}
-      </style>
-
-      <Form onSubmit={openModal}>
-        <Row>
-          <Col md={8} lg={9}>
-            <Card className="p-4 p-xl-5 my-3 my-xl-4">
-              <div className="d-flex flex-row align-items-start justify-content-between mb-3 flex-wrap">
-                <div className="d-flex flex-column">
-                  <div className="mb-2">
-                    <span className="fw-bold">Current&nbsp;Date:&nbsp;</span>
-                    <span className="current-date">{currentDate}</span>
+    <div className="max-w-6xl mx-auto p-4">
+      <ToastContainer position="top-right" autoClose={3000} />
+      <form onSubmit={openModal}>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="p-6 border-b">
+            <div className="flex flex-col md:flex-row">
+              <div className="flex-1 flex items-start">
+                {userLogo && (
+                  <img 
+                    src={userLogo} 
+                    alt="Company Logo" 
+                    className="w-16 h-16 object-contain mr-4"
+                  />
+                )}
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-800">INVOICE</h1>
+                  <div className="text-gray-600">#{invoiceNumber}</div>
+                  <div className="mt-3">
+                    <div className="font-bold">{billFrom || "Your Company"}</div>
+                    {billFromAddress ? (
+                      billFromAddress.split("\n").map((line, i) => (
+                        <div key={i}>{line}</div>
+                      ))
+                    ) : (
+                      <>
+                        <div>Your Address</div>
+                        <div>City, State ZIP</div>
+                        <div>Country</div>
+                      </>
+                    )}
                   </div>
-                  <div className="d-flex flex-row align-items-center">
-                    <span className="fw-bold d-block me-2">Due&nbsp;Date:</span>
-                    <Form.Control
-                      type="date"
-                      value={dateOfIssue}
-                      name="dateOfIssue"
-                      onChange={handleChange(setDateOfIssue)}
-                      style={{ maxWidth: "150px" }}
+                </div>
+              </div>
+
+              <div className="mt-4 md:mt-0 flex flex-col items-end">
+                <input
+                  type="date"
+                  value={dateOfIssue}
+                  onChange={(e) => setDateOfIssue(e.target.value)}
+                  className="mb-2 p-2 border rounded w-full md:w-auto"
+                />
+                <select
+                  value={currency.code}
+                  onChange={handleCurrencyChange}
+                  className="mb-3 p-2 border rounded w-full md:w-auto"
+                >
+                  {CURRENCIES.map((curr) => (
+                    <option key={curr.code} value={curr.code}>
+                      {curr.code} ({curr.symbol})
+                    </option>
+                  ))}
+                </select>
+                <div className="text-xl font-bold">
+                  Balance Due: {currency.symbol}{total}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="mb-6">
+              <h5 className="font-bold mb-3">Bill to:</h5>
+              <input
+                type="text"
+                value={billTo}
+                onChange={(e) => setBillTo(e.target.value)}
+                className="w-full p-2 mb-2 border rounded"
+                placeholder="Client Name"
+              />
+              <textarea
+                rows={3}
+                value={billToAddress}
+                onChange={(e) => setBillToAddress(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="Client Address"
+              />
+            </div>
+
+            {/* Add Item Options */}
+            <div className="flex gap-2 mb-4">
+              <button 
+                type="button"
+                onClick={handleAddItem}
+                className="flex items-center px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50"
+              >
+                <FaSearch className="mr-2" /> Add from Products
+              </button>
+              <button 
+                type="button"
+                onClick={handleAddManually}
+                className="flex items-center px-4 py-2 border border-gray-500 text-gray-500 rounded hover:bg-gray-50"
+              >
+                <FaPlus className="mr-2" /> Add Manually
+              </button>
+            </div>
+
+            {/* Product Search */}
+            {showProductSearch && (
+              <div className="mb-6">
+                <div className="flex border rounded overflow-hidden">
+                  <div className="p-2 bg-gray-100 flex items-center">
+                    <FaSearch className="text-gray-500" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1 p-2 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProductSearch(false);
+                      setSearchTerm("");
+                    }}
+                    className="p-2 bg-gray-100 hover:bg-gray-200"
+                  >
+                    <FaTimes className="text-gray-500" />
+                  </button>
+                </div>
+                {searchTerm && (
+                  <div className="mt-2 border rounded max-h-60 overflow-y-auto">
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          className="p-3 border-b hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleAddProductToInvoice(product)}
+                        >
+                          <div className="font-bold">{product.name}</div>
+                          {product.description && (
+                            <div className="text-sm text-gray-500">
+                              {product.description}
+                            </div>
+                          )}
+                          <div className="font-bold mt-1">
+                            {currency.symbol}
+                            {parseFloat(product.price).toFixed(2)}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-center text-gray-500">
+                        No products found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Manual Product Form */}
+            {addManually && (
+              <div className="mb-6 bg-gray-50 p-4 rounded">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="md:col-span-5">
+                    <label className="block mb-1">Product Name*</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={manualProduct.name}
+                      onChange={handleManualProductChange}
+                      className="w-full p-2 border rounded"
                       required
                     />
                   </div>
-                </div>
-                <div className="d-flex flex-row align-items-center">
-                  <span className="fw-bold me-2">Invoice&nbsp;Number:&nbsp;</span>
-                  <Form.Control
-                    type="number"
-                    value={invoiceNumber}
-                    name="invoiceNumber"
-                    onChange={handleChange(setInvoiceNumber)}
-                    min="1"
-                    style={{ maxWidth: "70px" }}
-                    required
-                  />
+                  <div className="md:col-span-3">
+                    <label className="block mb-1">Price*</label>
+                    <div className="flex">
+                      <span className="inline-flex items-center px-3 border border-r-0 rounded-l bg-gray-100">
+                        {currency.symbol}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        name="price"
+                        value={manualProduct.price}
+                        onChange={handleManualProductChange}
+                        className="flex-1 p-2 border rounded-r"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      name="quantity"
+                      value={manualProduct.quantity}
+                      onChange={handleManualProductChange}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block mb-1">Total</label>
+                    <div className="flex">
+                      <span className="inline-flex items-center px-3 border border-r-0 rounded-l bg-gray-100">
+                        {currency.symbol}
+                      </span>
+                      <input
+                        type="text"
+                        value={(
+                          (parseFloat(manualProduct.price) || 0) * 
+                          (parseInt(manualProduct.quantity) || 1)
+                        ).toFixed(2)}
+                        readOnly
+                        className="flex-1 p-2 border rounded-r bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                  <div className="md:col-span-12">
+                    <label className="block mb-1">Description</label>
+                    <textarea
+                      rows={2}
+                      name="description"
+                      value={manualProduct.description}
+                      onChange={handleManualProductChange}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                  <div className="md:col-span-12 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddManually(false)}
+                      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddManualProduct}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Add Product
+                    </button>
+                  </div>
                 </div>
               </div>
+            )}
 
-              <Row className="mb-3">
-                <Col xs={12} md={6} className="mb-3 mb-md-0">
-                  <Form.Label className="fw-bold" htmlFor="billFrom">
-                    Bill From
-                  </Form.Label>
-                  <Form.Control
-                    id="billFrom"
-                    type="text"
-                    placeholder="Company or Person"
-                    value={billFrom}
-                    onChange={handleChange(setBillFrom)}
-                    required
-                  />
-                  <Form.Control
-                    className="mt-2"
-                    type="email"
-                    placeholder="Email"
-                    value={billFromEmail}
-                    onChange={handleChange(setBillFromEmail)}
-                    required
-                  />
-                  <Form.Control
-                    className="mt-2"
-                    type="text"
-                    placeholder="Address"
-                    value={billFromAddress}
-                    onChange={handleChange(setBillFromAddress)}
-                    required
-                  />
-                </Col>
-                <Col xs={12} md={6}>
-                  <Form.Label className="fw-bold" htmlFor="billTo">
-                    Bill To
-                  </Form.Label>
-                  <Form.Control
-                    id="billTo"
-                    type="text"
-                    placeholder="Company or Person"
-                    value={billTo}
-                    onChange={handleChange(setBillTo)}
-                    required
-                  />
-                  <Form.Control
-                    className="mt-2"
-                    type="email"
-                    placeholder="Email"
-                    value={billToEmail}
-                    onChange={handleChange(setBillToEmail)}
-                    required
-                  />
-                  <Form.Control
-                    className="mt-2"
-                    type="text"
-                    placeholder="Address"
-                    value={billToAddress}
-                    onChange={handleChange(setBillToAddress)}
-                    required
-                  />
-                </Col>
-              </Row>
-
-              <div className="table-responsive">
-                <table className="table table-bordered mb-4">
-                  <thead>
-                    <tr>
-                      <th style={{ width: "200px" }}>Product</th>
-                      <th>Description</th>
-                      <th style={{ width: "100px" }}>Price</th>
-                      <th style={{ width: "80px" }}>Qty</th>
-                      <th style={{ width: "80px" }}>Total</th>
-                      <th style={{ width: "50px" }}></th>
+            <table className="w-full border-collapse mb-6">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-3 text-left border">Item</th>
+                  <th className="p-3 text-left border">Quantity</th>
+                  <th className="p-3 text-left border">Rate</th>
+                  <th className="p-3 text-left border">Amount</th>
+                  <th className="p-3 text-left border"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-gray-500 border">
+                      No items added yet
+                    </td>
+                  </tr>
+                ) : (
+                  items.map((item) => (
+                    <tr key={item.id} className="border-b">
+                      <td className="p-3 border">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) =>
+                            handleItemChange(item.id, "name", e.target.value)
+                          }
+                          className="w-full p-2 mb-1 border rounded"
+                        />
+                        <textarea
+                          rows={2}
+                          value={item.description}
+                          onChange={(e) =>
+                            handleItemChange(item.id, "description", e.target.value)
+                          }
+                          className="w-full p-2 border rounded text-sm"
+                        />
+                      </td>
+                      <td className="p-3 border">
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleItemChange(item.id, "quantity", e.target.value)
+                          }
+                          className="w-full p-2 border rounded"
+                        />
+                      </td>
+                      <td className="p-3 border">
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 border border-r-0 rounded-l bg-gray-100">
+                            {currency.symbol}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.price}
+                            onChange={(e) =>
+                              handleItemChange(item.id, "price", e.target.value)
+                            }
+                            className="flex-1 p-2 border rounded-r"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-3 border">
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 border border-r-0 rounded-l bg-gray-100">
+                            {currency.symbol}
+                          </span>
+                          <input
+                            type="text"
+                            value={(item.price * item.quantity).toFixed(2)}
+                            readOnly
+                            className="flex-1 p-2 border rounded-r bg-gray-50"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-3 border text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRowDel(item)}
+                          className="p-2 text-red-500 hover:text-red-700"
+                          aria-label="Delete item"
+                        >
+                          ×
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item) => {
-                      const totalPrice =
-                        (parseFloat(item.price || 0) * parseInt(item.quantity || 0)).toFixed(2);
-                      return (
-                        <tr key={item.id}>
-                          <td>
-                            <Form.Select
-                              id={item.id}
-                              value={item.productId}
-                              name="productId"
-                              aria-label="Select product"
-                              onChange={(e) => onProductSelect(item.id, e.target.value)}
-                              className="mb-2"
-                              style={{ minWidth: "150px" }}
-                            >
-                              <option value="">-- Select Product --</option>
-                              {PRODUCTS.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name}
-                                </option>
-                              ))}
-                              <option value="">Manual Entry</option>
-                            </Form.Select>
-                            <Form.Control
-                              id={item.id}
-                              type="text"
-                              name="name"
-                              placeholder="Product name"
-                              value={item.name}
-                              onChange={onItemizedItemEdit}
-                              required
-                            />
-                          </td>
-                          <td>
-                            <Form.Control
-                              id={item.id}
-                              type="text"
-                              name="description"
-                              placeholder="Description"
-                              value={item.description}
-                              onChange={onItemizedItemEdit}
-                            />
-                          </td>
-                          <td>
-                            <InputGroup>
-                              <InputGroup.Text>{currency}</InputGroup.Text>
-                              <Form.Control
-                                id={item.id}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                name="price"
-                                value={item.price}
-                                onChange={onItemizedItemEdit}
-                                required
-                              />
-                            </InputGroup>
-                          </td>
-                          <td>
-                            <Form.Control
-                              id={item.id}
-                              type="number"
-                              min="1"
-                              step="1"
-                              name="quantity"
-                              value={item.quantity}
-                              onChange={onItemizedItemEdit}
-                              required
-                            />
-                          </td>
-                          <td>
-                            <InputGroup>
-                              <InputGroup.Text>{currency}</InputGroup.Text>
-                              <Form.Control
-                                type="text"
-                                value={totalPrice}
-                                readOnly
-                                plaintext
-                              />
-                            </InputGroup>
-                          </td>
-                          <td className="text-center">
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              aria-label="Delete row"
-                              onClick={() => handleRowDel(item)}
-                            >
-                              &times;
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  ))
+                )}
+              </tbody>
+            </table>
 
-              <Button
-                variant="primary"
-                className="mb-3"
-                onClick={handleAddEvent}
-                aria-label="Add new item"
-              >
-                + Add Item
-              </Button>
-
-          <Row className="g-4 align-items-end mb-4 flex-wrap">
-
-  {/* Sub Total */}
-  <Col xs={12} sm={6} md={4} lg="auto">
-    <Form.Label className="fw-bold text-muted small mb-1">Sub Total</Form.Label>
-    <InputGroup>
-      <InputGroup.Text>{currency}</InputGroup.Text>
-      <Form.Control type="text" value={subTotal} readOnly className="bg-light" />
-    </InputGroup>
-  </Col>
-
-  {/* Tax Rate (%) */}
-  <Col xs={12} sm={6} md={4} lg="auto">
-    <Form.Label className="fw-bold text-muted small mb-1">Tax Rate (%)</Form.Label>
-    <Form.Control
-      type="number"
-      min="0"
-      max="100"
-      step="0.01"
-      value={taxRate}
-      onChange={handleChange(setTaxRate)}
-      className="bg-white"
-    />
-  </Col>
-
-  {/* Tax Amount */}
-  <Col xs={12} sm={6} md={4} lg="auto">
-    <Form.Label className="fw-bold text-muted small mb-1">Tax Amount</Form.Label>
-    <InputGroup>
-      <InputGroup.Text>{currency}</InputGroup.Text>
-      <Form.Control type="text" value={taxAmount} readOnly className="bg-light" />
-    </InputGroup>
-  </Col>
-
-  {/* Discount Rate (%) */}
-  <Col xs={12} sm={6} md={4} lg="auto">
-    <Form.Label className="fw-bold text-muted small mb-1">Discount Rate (%)</Form.Label>
-    <Form.Control
-      type="number"
-      min="0"
-      max="100"
-      step="0.01"
-      value={discountRate}
-      onChange={handleChange(setDiscountRate)}
-      className="bg-white"
-    />
-  </Col>
-
-  {/* Discount Amount */}
-  <Col xs={12} sm={6} md={4} lg="auto">
-    <Form.Label className="fw-bold text-muted small mb-1">Discount Amount</Form.Label>
-    <InputGroup>
-      <InputGroup.Text>{currency}</InputGroup.Text>
-      <Form.Control type="text" value={discountAmount} readOnly className="bg-light" />
-    </InputGroup>
-  </Col>
-
-  {/* Total */}
-  <Col xs={12} sm={6} md={4} lg="auto">
-    <Form.Label className="fw-bold text-dark small mb-1 fs-6">Total</Form.Label>
-    <InputGroup>
-      <InputGroup.Text>{currency}</InputGroup.Text>
-      <Form.Control
-        type="text"
-        value={total}
-        readOnly
-        className="bg-success text-white fw-bold fs-6"
-      />
-    </InputGroup>
-  </Col>
-
-</Row>
-
-
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold">Additional Notes</Form.Label>
-                <Form.Control
-                  as="textarea"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block mb-1">Notes</label>
+                <textarea
                   rows={3}
                   value={notes}
-                  onChange={handleChange(setNotes)}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  placeholder="Thank you for your business!"
                 />
-              </Form.Group>
+                <label className="block mb-1 mt-4">Terms & Conditions</label>
+                <textarea
+                  rows={3}
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  placeholder="Payment due within 30 days"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>{currency.symbol}{subTotal}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax ({taxRate}%):</span>
+                  <span>{currency.symbol}{taxAmount}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                  <span>Total:</span>
+                  <span>{currency.symbol}{total}</span>
+                </div>
+              </div>
+            </div>
 
-              <Button
-                variant="primary"
-                type="submit"
-                className="w-100"
-                aria-label="Preview Invoice"
+            <div className="flex justify-end">
+              <button 
+                type="submit" 
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
               >
                 Preview Invoice
-              </Button>
-            </Card>
-          </Col>
-        </Row>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {isOpen && (
           <InvoiceModal
@@ -550,25 +625,32 @@ const InvoiceForm = () => {
               invoiceNumber,
               dateOfIssue,
               billFrom,
-              billFromEmail,
               billFromAddress,
               billTo,
-              billToEmail,
               billToAddress,
               items,
               total,
               subTotal,
               taxRate,
               taxAmount,
-              discountRate,
-              discountAmount,
+              currency: currency.symbol,
+              companyLogo: userLogo,
               notes,
-              currency,
+              terms,
+              printButton: (
+                <button 
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  <FaPrint className="mr-2" /> Print Invoice
+                </button>
+              )
             }}
           />
         )}
-      </Form>
-    </>
+      </form>
+    </div>
   );
 };
 

@@ -70,6 +70,18 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
   };
 
+  // New function to print the invoice
+  const printInvoice = () => {
+    if (!invoiceRef.current) return;
+    const printContents = invoiceRef.current.innerHTML;
+    const originalContents = document.body.innerHTML;
+
+    document.body.innerHTML = printContents;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload(); // Reload to re-attach React event handlers
+  };
+
   return (
     <Modal
       show={isOpen}
@@ -220,11 +232,10 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
             Close
           </Button>
           <div>
-            <Button
-              variant="primary"
-              onClick={generatePdf}
-              className="me-2"
-            >
+            <Button variant="info" onClick={printInvoice} className="me-2">
+              Print Invoice
+            </Button>
+            <Button variant="primary" onClick={generatePdf} className="me-2">
               Download PDF
             </Button>
             <Button variant="success" onClick={generatePdfAndSend}>
