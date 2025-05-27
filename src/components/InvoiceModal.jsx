@@ -28,7 +28,7 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     total,
     notes,
     currency,
-    companyLogo // Added logo prop
+    companyLogo
   } = data;
 
   const generatePdf = async () => {
@@ -36,10 +36,10 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, { 
+      const canvas = await html2canvas(element, {
         scale: 2,
         logging: false,
-        useCORS: true // Important for logo rendering
+        useCORS: true
       });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
@@ -56,23 +56,38 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     }
   };
 
-  const generatePdfAndSend = async () => {
+  // ✅ Modified function to send text-based billing details only
+  const sendBillingDetailsViaWhatsApp = () => {
     if (!phone.trim()) {
       alert("Please enter a valid phone number.");
       return;
     }
 
-    await generatePdf();
-
-    setAlertVisible(true);
-
-    const message = encodeURIComponent(
-      `Hello! Please find my invoice #${invoiceNumber} dated ${dateOfIssue}. Kindly check the attached PDF invoice.`
-    );
-
     const formattedPhone = phone.replace(/[^+\d]/g, "");
 
-    window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
+    let message = `📄 *Invoice #${invoiceNumber}* (${dateOfIssue})\n\n`;
+
+    message += `👨‍💼 *From:* ${billFrom}\n📧 ${billFromEmail}\n🏢 ${billFromAddress}\n\n`;
+    message += `👤 *To:* ${billTo}\n📧 ${billToEmail}\n🏠 ${billToAddress}\n\n`;
+
+    message += `🧾 *Items:*\n`;
+    items.forEach((item, index) => {
+      message += `  ${index + 1}. ${item.name || "-"} - ${currency}${item.price} x ${item.quantity} = ${currency}${(item.price * item.quantity).toFixed(2)}\n`;
+    });
+
+    message += `\n💰 *Sub Total:* ${currency}${subTotal}\n`;
+    message += `🧾 *Tax (${taxRate}%):* ${currency}${taxAmount}\n`;
+    message += `🎁 *Discount (${discountRate}%):* ${currency}${discountAmount}\n`;
+    message += `🟢 *Total:* ${currency}${total}\n`;
+
+    if (notes) {
+      message += `\n📝 *Notes:* ${notes}`;
+    }
+
+    const encodedMsg = encodeURIComponent(message);
+
+    window.open(`https://wa.me/${formattedPhone}?text=${encodedMsg}`, "_blank");
+    setAlertVisible(true);
   };
 
   const printInvoice = () => {
@@ -107,15 +122,14 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
         ref={invoiceRef}
         style={{ maxHeight: "70vh", overflowY: "auto" }}
       >
-        {/* Invoice Header with Logo */}
         <div className="d-flex justify-content-between align-items-start mb-4">
           {companyLogo && (
-            <div className="mb-3" style={{ width: '150px' }}>
-              <img 
-                src={companyLogo} 
-                alt="Company Logo" 
-                className="img-fluid" 
-                style={{ maxHeight: '80px' }}
+            <div className="mb-3" style={{ width: "150px" }}>
+              <img
+                src={companyLogo}
+                alt="Company Logo"
+                className="img-fluid"
+                style={{ maxHeight: "80px" }}
               />
             </div>
           )}
@@ -128,7 +142,6 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </div>
         </div>
 
-        {/* Bill From and Bill To Sections */}
         <div className="row mb-4">
           <div className="col-md-6">
             <div className="card border-0 bg-light p-3">
@@ -152,7 +165,6 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </div>
         </div>
 
-        {/* Items Table */}
         <Table bordered responsive className="mb-4">
           <thead className="table-dark">
             <tr>
@@ -187,7 +199,6 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </tbody>
         </Table>
 
-        {/* Totals Section */}
         <div className="row justify-content-end">
           <div className="col-md-5">
             <div className="table-responsive">
@@ -223,7 +234,6 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </div>
         </div>
 
-        {/* Notes Section */}
         {notes && (
           <div className="mt-4 p-3 bg-light rounded">
             <h6 className="fw-bold">Additional Notes:</h6>
@@ -231,10 +241,11 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </div>
         )}
 
-        {/* Footer */}
         <div className="mt-5 pt-3 border-top text-center text-muted small">
           <p className="mb-1">Thank you for your business!</p>
-          <p className="mb-0">This is a computer generated invoice and does not require signature</p>
+          <p className="mb-0">
+            This is a computer generated invoice and does not require signature
+          </p>
         </div>
       </Modal.Body>
 
@@ -257,8 +268,7 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
             dismissible
             className="mb-3"
           >
-            Please manually attach the downloaded PDF in WhatsApp after you are
-            redirected.
+            WhatsApp message sent with billing details.
           </Alert>
         )}
 
@@ -273,7 +283,7 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
             <Button variant="primary" onClick={generatePdf}>
               <i className="bi bi-download me-2"></i>Download PDF
             </Button>
-            <Button variant="success" onClick={generatePdfAndSend}>
+            <Button variant="success" onClick={sendBillingDetailsViaWhatsApp}>
               <i className="bi bi-whatsapp me-2"></i>Send via WhatsApp
             </Button>
           </div>
