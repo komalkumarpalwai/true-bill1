@@ -28,6 +28,7 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     total,
     notes,
     currency,
+    companyLogo // Added logo prop
   } = data;
 
   const generatePdf = async () => {
@@ -35,7 +36,11 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, { scale: 2 });
+      const canvas = await html2canvas(element, { 
+        scale: 2,
+        logging: false,
+        useCORS: true // Important for logo rendering
+      });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
 
@@ -70,7 +75,6 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
   };
 
-  // New function to print the invoice
   const printInvoice = () => {
     if (!invoiceRef.current) return;
     const printContents = invoiceRef.current.innerHTML;
@@ -79,7 +83,7 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
     document.body.innerHTML = printContents;
     window.print();
     document.body.innerHTML = originalContents;
-    window.location.reload(); // Reload to re-attach React event handlers
+    window.location.reload();
   };
 
   return (
@@ -103,58 +107,78 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
         ref={invoiceRef}
         style={{ maxHeight: "70vh", overflowY: "auto" }}
       >
-        {/* Invoice content same as before */}
-        <div className="mb-3 d-flex justify-content-between flex-wrap">
-          <div>
-            <h5>
-              Invoice #: <span className="fw-normal">{invoiceNumber}</span>
-            </h5>
-            <h6>
-              Date of Issue: <span className="fw-normal">{dateOfIssue}</span>
-            </h6>
-          </div>
+        {/* Invoice Header with Logo */}
+        <div className="d-flex justify-content-between align-items-start mb-4">
+          {companyLogo && (
+            <div className="mb-3" style={{ width: '150px' }}>
+              <img 
+                src={companyLogo} 
+                alt="Company Logo" 
+                className="img-fluid" 
+                style={{ maxHeight: '80px' }}
+              />
+            </div>
+          )}
           <div className="text-end">
-            <h6>
-              <strong>Bill From</strong>
-            </h6>
-            <div>{billFrom}</div>
-            <div>{billFromEmail}</div>
-            <div>{billFromAddress}</div>
-          </div>
-          <div className="text-end">
-            <h6>
-              <strong>Bill To</strong>
-            </h6>
-            <div>{billTo}</div>
-            <div>{billToEmail}</div>
-            <div>{billToAddress}</div>
+            <h2 className="text-primary mb-1">INVOICE</h2>
+            <div className="d-flex flex-column">
+              <span className="text-muted">Invoice #: {invoiceNumber}</span>
+              <span className="text-muted">Date: {dateOfIssue}</span>
+            </div>
           </div>
         </div>
 
-        <Table bordered responsive>
-          <thead>
+        {/* Bill From and Bill To Sections */}
+        <div className="row mb-4">
+          <div className="col-md-6">
+            <div className="card border-0 bg-light p-3">
+              <h5 className="card-title">Bill From</h5>
+              <div className="card-text">
+                <p className="mb-1"><strong>{billFrom}</strong></p>
+                <p className="mb-1">{billFromEmail}</p>
+                <p className="mb-0">{billFromAddress}</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-6">
+            <div className="card border-0 bg-light p-3">
+              <h5 className="card-title">Bill To</h5>
+              <div className="card-text">
+                <p className="mb-1"><strong>{billTo}</strong></p>
+                <p className="mb-1">{billToEmail}</p>
+                <p className="mb-0">{billToAddress}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <Table bordered responsive className="mb-4">
+          <thead className="table-dark">
             <tr>
+              <th>#</th>
               <th>Product</th>
               <th>Description</th>
-              <th style={{ width: "100px" }}>Price</th>
-              <th style={{ width: "80px" }}>Qty</th>
-              <th style={{ width: "100px" }}>Total</th>
+              <th className="text-end">Price</th>
+              <th className="text-center">Qty</th>
+              <th className="text-end">Total</th>
             </tr>
           </thead>
           <tbody>
-            {items.map(({ id, name, description, price, quantity }) => {
+            {items.map(({ id, name, description, price, quantity }, index) => {
               const totalPrice = (
                 parseFloat(price || 0) * parseInt(quantity || 0)
               ).toFixed(2);
               return (
                 <tr key={id}>
+                  <td>{index + 1}</td>
                   <td>{name || "-"}</td>
                   <td>{description || "-"}</td>
-                  <td>
+                  <td className="text-end">
                     {currency} {parseFloat(price).toFixed(2)}
                   </td>
-                  <td>{quantity}</td>
-                  <td>
+                  <td className="text-center">{quantity}</td>
+                  <td className="text-end">
                     {currency} {totalPrice}
                   </td>
                 </tr>
@@ -163,45 +187,55 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </tbody>
         </Table>
 
-        <div
-          className="d-flex justify-content-end flex-column"
-          style={{ maxWidth: "300px", marginLeft: "auto" }}
-        >
-          <div className="d-flex justify-content-between mb-1">
-            <strong>Sub Total:</strong>
-            <span>
-              {currency} {subTotal}
-            </span>
-          </div>
-          <div className="d-flex justify-content-between mb-1">
-            <strong>Tax ({taxRate} %):</strong>
-            <span>
-              {currency} {taxAmount}
-            </span>
-          </div>
-          <div className="d-flex justify-content-between mb-1">
-            <strong>Discount ({discountRate} %):</strong>
-            <span>
-              {currency} {discountAmount}
-            </span>
-          </div>
-          <hr />
-          <div className="d-flex justify-content-between fs-5 fw-bold">
-            <span>Total:</span>
-            <span>
-              {currency} {total}
-            </span>
+        {/* Totals Section */}
+        <div className="row justify-content-end">
+          <div className="col-md-5">
+            <div className="table-responsive">
+              <table className="table table-bordered">
+                <tbody>
+                  <tr>
+                    <td className="fw-bold">Sub Total:</td>
+                    <td className="text-end">
+                      {currency} {subTotal}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="fw-bold">Tax ({taxRate}%):</td>
+                    <td className="text-end">
+                      {currency} {taxAmount}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="fw-bold">Discount ({discountRate}%):</td>
+                    <td className="text-end">
+                      {currency} {discountAmount}
+                    </td>
+                  </tr>
+                  <tr className="table-active">
+                    <td className="fw-bold">Total:</td>
+                    <td className="text-end fw-bold">
+                      {currency} {total}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
+        {/* Notes Section */}
         {notes && (
-          <div className="mt-4">
-            <h6>
-              <strong>Additional Notes:</strong>
-            </h6>
-            <p>{notes}</p>
+          <div className="mt-4 p-3 bg-light rounded">
+            <h6 className="fw-bold">Additional Notes:</h6>
+            <p className="mb-0">{notes}</p>
           </div>
         )}
+
+        {/* Footer */}
+        <div className="mt-5 pt-3 border-top text-center text-muted small">
+          <p className="mb-1">Thank you for your business!</p>
+          <p className="mb-0">This is a computer generated invoice and does not require signature</p>
+        </div>
       </Modal.Body>
 
       <Modal.Footer className="d-flex flex-column align-items-stretch">
@@ -212,6 +246,7 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
             placeholder="e.g. +1234567890"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            className="py-2"
           />
         </Form.Group>
 
@@ -227,19 +262,19 @@ const InvoiceModal = ({ isOpen, closeModal, data }) => {
           </Alert>
         )}
 
-        <div className="d-flex justify-content-between">
-          <Button variant="secondary" onClick={closeModal}>
+        <div className="d-flex justify-content-between align-items-center">
+          <Button variant="outline-secondary" onClick={closeModal}>
             Close
           </Button>
-          <div>
-            <Button variant="info" onClick={printInvoice} className="me-2">
-              Print Invoice
+          <div className="d-flex gap-2">
+            <Button variant="outline-primary" onClick={printInvoice}>
+              <i className="bi bi-printer me-2"></i>Print
             </Button>
-            <Button variant="primary" onClick={generatePdf} className="me-2">
-              Download PDF
+            <Button variant="primary" onClick={generatePdf}>
+              <i className="bi bi-download me-2"></i>Download PDF
             </Button>
             <Button variant="success" onClick={generatePdfAndSend}>
-              Send via WhatsApp
+              <i className="bi bi-whatsapp me-2"></i>Send via WhatsApp
             </Button>
           </div>
         </div>
