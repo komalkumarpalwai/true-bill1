@@ -5,10 +5,11 @@ import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
 const CURRENCIES = [
+    { code: "INR", symbol: "₹", name: "Indian Rupee" },
   { code: "USD", symbol: "$", name: "US Dollar" },
   { code: "EUR", symbol: "€", name: "Euro" },
   { code: "GBP", symbol: "£", name: "British Pound" },
-  { code: "INR", symbol: "₹", name: "Indian Rupee" },
+
   { code: "JPY", symbol: "¥", name: "Japanese Yen" },
 ];
 
@@ -313,26 +314,30 @@ const InvoiceForm = () => {
             <div className="mb-6">
               <h5 className="text-lg font-semibold text-gray-800 mb-3">Bill to:</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+  <input
+    type="text"
+    value={billTo}
+    onChange={(e) => setBillTo(e.target.value)}
+    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    placeholder="Client Name"
+    required
+  />
+</div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
-                  <input
-                    type="text"
-                    value={billTo}
-                    onChange={(e) => setBillTo(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Client Name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Address</label>
-                  <textarea
-                    rows={3}
-                    value={billToAddress}
-                    onChange={(e) => setBillToAddress(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Client Address"
-                  />
-                </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Client Address</label>
+  <textarea
+    rows={3}
+    value={billToAddress}
+    onChange={(e) => setBillToAddress(e.target.value)}
+    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    placeholder="Client Address"
+    required
+  />
+</div>
+
               </div>
             </div>
 
